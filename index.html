@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="fi">
+<head>
+    <meta charset="utf-8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="user-scalable=no, initial-scale=1, minimum-scale=1, width=device-width, viewport-fit=cover"/>
+
+    <meta name="format-detection" content="telephone=no">
+
+
+    <title>ADR Advisor</title>
+
+    <script src="js/data.js"></script>
+    <script src="js/adr.js"></script>
+
+    <link rel="stylesheet" href="css/merriweather.css">
+    <link rel="stylesheet" href="lib/onsen/css/onsenui.css">
+    <link rel="stylesheet" href="lib/onsen/css/onsen-css-components.css">
+    <link rel="stylesheet" href="styles/app.css"/>
+    <link rel="stylesheet" href="css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="css/styles.css"/>
+
+    <script>
+        if (navigator.userAgent.match(/IEMobile\/10\.0/)) {
+            var msViewportStyle = document.createElement("style");
+            msViewportStyle.appendChild(
+                    document.createTextNode(
+                            "@-ms-viewport{width:auto!important}"
+                    )
+            );
+            document.getElementsByTagName("head")[0].
+                    appendChild(msViewportStyle);
+        }
+    </script>
+
+
+    <script src="js/md5.js"></script>
+    <script src="lib/onsen/js/angular/angular.js"></script>
+    <script src="js/angular-locker.min.js"></script>
+    <script src="js/angular-locale_fi.js"></script>
+    <script src="js/angular-sanitize.js"></script>
+    <script src="js/jquery-2.1.3.min.js"></script>
+    <script src="lib/onsen/js/onsenui.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+
+    <script src="js/app.js"></script>
+    <script src="cordova.js"></script>
+    <script src="lib/angular-translate/angular-translate.min.js"></script>
+    <script src="lib/angular-translate-loader-static-files/angular-translate-loader-static-files.min.js"></script>
+
+    <script>
+
+    </script>
+
+    <script>
+        /* Error handler */
+        window.onerror = function (msg, url, lineNo, columnNo, error) {
+            var string = msg.toLowerCase();
+            var substring = "script error";
+            if (string.indexOf(substring) > -1) {
+                alert('Script Error: See Browser Console for Detail');
+            } else {
+                var message = [
+                    'Message: ' + msg,
+                    'URL: ' + url,
+                    'Line: ' + lineNo,
+                    'Column: ' + columnNo,
+                    'Error object: ' + JSON.stringify(error)
+                ].join(' - ');
+                alert(message);
+            }
+            return false;
+        };
+
+        // Select default language when launching the app for the first time
+        if (!window.localStorage.getItem('adrlanguage')) {
+            // Get browser's language
+            if (window.navigator.language) {
+                window.g10nLanguage = window.navigator.language;
+            } else if (window.navigator.userLanguage) {
+                window.g10nLanguage = window.navigator.userLanguage;
+            } else {
+                window.g10nLanguage = "";
+            }
+
+            // Choose default language
+            if (window.g10nLanguage.indexOf('fi') !== -1) {
+                window.localStorage.setItem('adrlanguage', 'fi-FI');
+            } else {
+                window.localStorage.setItem('adrlanguage', 'en-GB');
+            }
+        }
+
+        /* Start angular */
+        function bootstrapAngular() {
+            angular.element(document).ready(function () {
+                angular.bootstrap(document, ["adr"]);
+            });
+        }
+        document.addEventListener("deviceready", function () {
+            if (typeof window["StatusBar"] != "undefined") {
+                StatusBar.hide();
+            }
+            if (typeof window["device"] != "undefined") {
+                jQuery('body').addClass('device-' + window.device.platform.toLowerCase());
+            }
+            bootstrapAngular();
+        }, false);
+
+    </script>
+
+</head>
+
+<body ng-cloak ng-controller="HazardController as hazard">
+
+<ons-tabbar var="tabbar">
+
+    <!-- Tab 0 -->
+    <ons-tab active="true" page="add.html">
+        <div ng-show="!hasSubscribed"  class="tab">
+            <img src="img/lisaa_aine.svg" class="tab-icon ons-icon"/>
+        </div>
+        <div ng-show="!hasSubscribed" class="tab-label">{{ 'ADD_SUBSTANCE_OR_ARTICLE_1' | translate }}</div>
+    </ons-tab>
+
+    <!-- Tab 1 -->
+    <ons-tab ng-show="!hasSubscribed" page="cargo.html" style="width: 38%" ng-class="{disabled: !!hazard.activeHazard}">
+        <div class="tab">
+            <img src="img/kuorman_tiedot.svg" class="tab-icon ons-icon" style="position: relative; top: 0.5em;"/>
+        </div>
+        <span class="badge cargo-length" ng-show="hazard.cargoLength() > 0">{{hazard.cargoLength()}}</span>
+
+        <div class="tab-label">{{ 'LOAD_INFORMATION' | translate }}</div>
+    </ons-tab>
+
+    <!-- Tab 2 -->
+    <ons-tab ng-show="!hasSubscribed" page="unload.html" ng-class="{disabled: !!hazard.activeHazard}">
+        <div class="tab">
+            <img src="img/pura_kuorma.svg" class="tab-icon ons-icon"/>
+        </div>
+        <div class="tab-label">{{ 'UNLOAD' | translate }}</div>
+    </ons-tab>
+
+</ons-tabbar>
+<div ng-show="!hasSubscribed" ng-cloak ng-show="hazard.cargoLength() == 0" class="cargo-empty-alert">{{ 'NO_LOAD_-_ADD' | translate }}</div>
+
+<div class="modal" id="help-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">{{ 'INSTRUCTIONS' | translate }}</h4>
+            </div>
+            <div class="modal-body">
+                <div ng-include="hazard.helpTemplate"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn button--cta" data-dismiss="modal">{{ 'CLOSE' | translate }}</button>
+            </div>
+        </div>
+        <!-- /.modal-content -->
+    </div>
+    <!-- /.modal-dialog -->
+</div>
+<!-- /.modal -->
+
+<ons-template id="popover.html">
+    <ons-popover cancelable direction="down">
+    </ons-popover>
+</ons-template>
+
+<div class="modal" id="welcome-modal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">ADR Advisor</h4>
+            </div>
+            <div class="modal-body">
+                <div ng-include="'./help-general.html'"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn button--cta" data-dismiss="modal">{{ 'CLOSE' | translate }}</button>
+            </div>
+        </div>
+        <!-- /.modal-content -->
+    </div>
+    <!-- /.modal-dialog -->
+</div>
+
+<div class="modal" id="accident-modal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">ADR Advisor</h4>
+            </div>
+            <div class="modal-body">
+                <div ng-include="hazard.accidentTemplate"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn button--cta" data-dismiss="modal">{{ 'CLOSE' | translate }}</button>
+            </div>
+        </div>
+        <!-- /.modal-content -->
+    </div>
+    <!-- /.modal-dialog -->
+</div>
+
+<div class="modal" id="language-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">ADR Advisor</h4>
+            </div>
+            <div class="modal-body">
+                <p>
+                    <button class="btn btn-link" ng-click="hazard.changeLanguage('fi-FI')">
+                        <img style="margin-right: 15px;" src="img/flag-fi.png">
+                        {{ 'IN_FINNISH' | translate }}
+                    </button>
+                </p>
+                <p>
+                    <button class="btn btn-link" ng-click="hazard.changeLanguage('en-GB')">
+                        <img style="margin-right: 15px;" src="img/flag-uk.png">
+                        {{ 'IN_ENGLISH' | translate }}
+                    </button>
+                </p>
+                <p>
+                    <button class="btn btn-link" ng-click="hazard.changeLanguage('de-DE')">
+                        <img style="margin-right: 15px;" src="img/flag-de.png">
+                        {{ 'IN_GERMAN' | translate }}
+                    </button>
+                </p>
+                <p>
+                    <button class="btn btn-link" ng-click="hazard.changeLanguage('fr-FR')">
+                        <img style="margin-right: 15px;" src="img/flag-fr.png">
+                        {{ 'IN_FRENCH' | translate }}
+                    </button>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn button--cta" data-dismiss="modal">{{ 'CLOSE' | translate }}</button>
+            </div>
+        </div>
+        <!-- /.modal-content -->
+    </div>
+    <!-- /.modal-dialog -->
+</div>
+
+<div class="modal" id="extinguisher-modal" tabindex="-1" data-backdrop="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">{{ 'FIRE_EXTINGUISHERS' | translate }}</h4>
+            </div>
+            <div class="modal-body">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th>(A)</th>
+                        <th>(B)</th>
+                        <th>(C)</th>
+                        <th>(D)</th>
+                        <th>(E)</th>
+                    </tr>
+                    </thead>
+                    <tr>
+                        <td class="columntitle">{{ 'ALL_TRANSPORT_UNITS_AND' | translate }}</td>
+                        <td>1</td>
+                        <td>2 kg</td>
+                        <td>1&times;2 kg</td>
+                        <td>2 kg</td>
+                    </tr>
+                    <tr>
+                        <td class="columntitle">{{ 'MAX_35_T' | translate }}</td>
+                        <td>2</td>
+                        <td>4 kg</td>
+                        <td>1&times;2 kg</td>
+                        <td>2 kg</td>
+                    </tr>
+                    <tr>
+                        <td class="columntitle">{{ 'OVER_35_T,_MAX' | translate }}</td>
+                        <td>2</td>
+                        <td>8 kg</td>
+                        <td>1&times;2 kg</td>
+                        <td>6 kg</td>
+                    </tr>
+                    <tr>
+                        <td class="columntitle">{{ 'OVER_75_T' | translate }}</td>
+                        <td>2</td>
+                        <td>12 kg</td>
+                        <td>1&times;2 kg</td>
+                        <td>6 kg</td>
+                    </tr>
+                </table>
+                <p>(A) {{ 'TRANSPORT_UNIT_MAXIMUM_PERMISSIBLE' | translate }}</p>
+                <p>(B) {{ 'MINIMUM_NUMBER_OF_FIRE' | translate }}</p>
+                <p>(C) {{ 'MINIMUM_TOTAL_CAPACITY_PER' | translate }}</p>
+                <p>(D) {{ 'EXTINGUISHER_SUITABLE_FOR_ENGINE' | translate }}</p>
+                <p>(E) {{ 'AT_LEAST_ONE_WITH' | translate }}</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn button--cta" data-dismiss="modal">{{ 'CLOSE' | translate }}</button>
+            </div>
+        </div>
+        <!-- /.modal-content -->
+    </div>
+    <!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div class="modal" id="buy-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">{{ 'SUBSCRIBE_TITLE' | translate }}</h4>
+            </div>
+            <div class="modal-body">
+                <div>
+                    <p translate="SUBSCRIBE_CONTAINS" translate-value-name="{{ product.title }}"></p>
+                    <ul>
+                        <li>{{ 'SUBSCRIBE_ITEM1' | translate }}</li>
+                        <li>{{ 'SUBSCRIBE_ITEM2' | translate }}</li>
+                    </ul>
+
+                    <p ng-if="ios" translate="SUBSCRIBE_INFO_IOS" translate-value-price="{{ product.price }}"></p>
+                    <p ng-if="ios" translate="SUBSCRIBE_CANCEL_IOS"></p>
+                    <p ng-if="android" translate="SUBSCRIBE_INFO_ANDROID" translate-value-price="{{ product.price }}"></p>
+                    <p ng-if="android" translate="SUBSCRIBE_CANCEL_ANDROID"></p>
+                    <p translate="SUBSCRIBE_LEGAL_TERMS"></p>
+                    <p>
+                        <a href ng-click="hazard.openTermsLink()">{{ hazard.getTermsUrl() }}</a>
+                    </p>
+                    <p translate="SUBSCRIBE_LEGAL_PRIVACY"></p>
+                    <p>
+                        <a href ng-click="hazard.openPrivacyLink()">{{ hazard.getPrivacyStatementUrl() }}</a>
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn button--cta" data-dismiss="modal" ng-click="hazard.purchaseProduct()">
+                    {{ 'SUBSCRIBE_BUTTON' | translate }}
+                    <span ng-if="product.price">({{ product.price }})</span>
+                </button>
+            </div>
+        </div>
+        <!-- /.modal-content -->
+    </div>
+    <!-- /.modal-dialog -->
+</div>
+
+<div class="modal" id="message-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" ng-click="hazard.readMessage()">
+                <span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">{{ message.subject }}</h4>
+            </div>
+            <div class="modal-body">
+                <div ng-if="message.image">
+                    <img ng-src="{{ message.image }}" style="max-width: 100%">
+                </div>
+                <p>{{ message.body }}</p>
+            </div>
+            <div class="modal-footer">
+                <button ng-if="message.action" type="button" class="btn button--cta" data-dismiss="modal" ng-click="hazard.openMessage()">
+                    {{ message.label }}
+                </button>
+                <button type="button" class="btn button--cta" data-dismiss="modal" ng-click="hazard.nextMessage()">
+                    <span ng-if="messages.length <= 1">{{ 'CLOSE' | translate }}</span>
+                    <span ng-if="messages.length > 1">{{ 'NEXT_BUTTON' | translate }}</span>
+                </button>
+            </div>
+        </div>
+        <!-- /.modal-content -->
+    </div>
+    <!-- /.modal-dialog -->
+</div>
+
+<div class="modal" id="distraction-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">{{ distraction.subject }}</h4>
+            </div>
+            <div class="modal-body">
+                <p ng-if="distraction.image">
+                    <img ng-src="{{ distraction.image }}" style="max-width: 100%">
+                </p>
+                <p>{{ distraction.body }}</p>
+            </div>
+            <div class="modal-footer">
+                <button ng-if="distraction.action" type="button" class="btn" data-dismiss="modal">
+                    {{ 'CLOSE' | translate }}
+                </button>
+                <button ng-if="distraction.action" type="button" class="btn button--cta" data-dismiss="modal" ng-click="hazard.openDistraction()">
+                    {{ distraction.label }}
+                </button>
+                <button ng-if="!distraction.action" type="button" class="btn button--cta" data-dismiss="modal">
+                    {{ 'CLOSE' | translate }}
+                </button>
+            </div>
+        </div>
+        <!-- /.modal-content -->
+    </div>
+    <!-- /.modal-dialog -->
+</div>
+
+<script>
+/* Move the virtual keyboard out of the way when pressing enter on a field */
+(function($) {
+    $(document).on('keydown', '#un-quantity', function(e) {
+        if (e.keyCode == 9 || e.keyCode == 13) {
+            window.setTimeout(function() {
+                $('#add-button').focus();
+            }, 10);
+        }
+        return true;
+    });
+})(jQuery);
+</script>
+
+</body>
+</html>
